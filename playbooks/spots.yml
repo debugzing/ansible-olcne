@@ -21,7 +21,7 @@
       include_tasks: ./tasks/spot_instance.yml
       loop:
         - instance_name: operator
-          template: "./templates/rancher_spot_managed_instance_configuration.json.j2"
+          template: "./templates/operator_spot_managed_instance_configuration.json.j2"
           subnet_id: '{{ subnet_id_a }}'
         - instance_name: w1
           template: "./templates/k8s_spot_managed_instance_configuration.json.j2"

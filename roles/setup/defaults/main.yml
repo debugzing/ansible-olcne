@@ -2,6 +2,6 @@ project_name: spot
 vars_file_path: ./vars.yml
 key_name: 'id_rsa'
 public_key_file_path: '~/.ssh/id_rsa.pub'
-vpc_cidr_prefix: 10.240
+vpc_cidr_prefix: '10.240'
 vpc_cidr_mask: 16
 public_subnet_cidr_mask: 24

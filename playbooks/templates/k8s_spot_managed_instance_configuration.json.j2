@@ -1,6 +1,6 @@
 {
   "managedInstance": {
-    "name": "{{ instance_name }}",
+    "name": "{{ item.instance_name }}",
     "description": "OLCNE K8s Node",
     "region": "{{ aws_region }}",
     "strategy": {
@@ -58,7 +58,7 @@
           },
           {
             "tagKey": "Name",
-            "tagValue": "{{ instance_name }}"
+            "tagValue": "{{ item.instance_name }}"
           }
         ],
         "userData": null,
@@ -73,7 +73,7 @@
           "cpuCredits": "standard"
         },
       },
-      "privateIp": "{{ private_ip }}",
+      "privateIp": "{{ item.private_ip }}",
       "product": "Linux/UNIX"
     },
     "integrations": {
@@ -83,7 +83,7 @@
             "hostedZoneId": "{{ hosted_zone_id }}",
             "recordSets": [
               {
-                "name": "{{ instance_name }}.{{ domain }}.",
+                "name": "{{ item.instance_name }}.{{ domain }}.",
                 "usePublicIp": false
               }
             ]

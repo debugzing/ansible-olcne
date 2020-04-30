@@ -7,6 +7,7 @@
 # GNU:        General Public License v3.0
 ###############################################################################
 
-operator_server_host="operator.$(cat vars.yml | grep domain | cut -d ':' -f2 | sed 's/^ *//g')"
+host="operator.$(cat vars.yml | grep domain | cut -d ':' -f2 | sed 's/^ *//g')"
+user=$(cat hosts.yml | grep ansible_ssh_user | cut -d ':' -f2 | sed 's/^ *//g')
 
-ssh -i $PRIVATE_KEY_FILE_PATH ubuntu@$operator_server_host
+ssh -i $PRIVATE_KEY_FILE_PATH $user@$host

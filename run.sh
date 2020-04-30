@@ -18,6 +18,9 @@ setupprime(){
   then
     export $(cat .env | sed 's/#.*//g' | xargs)
   fi
+
+  eval "$(ssh-agent -s)"
+  ssh-add $PRIVATE_KEY_FILE_PATH
 }
 
 menuprime(){
@@ -37,6 +40,7 @@ EOF
 [1] Create the project VPC
 [2] Create the Operator, Master, and Worker nodes
 [3] SSH to Operator Server
+[4] SSH to K8s Node
 
 [A] Deploy
 [X] Destroy
@@ -61,12 +65,16 @@ EOF
       bash ./scripts/continue.sh
       menuprime ;;
     3 )
-      bash ./scripts/operator_server_ssh.sh
+      bash ./scripts/operator_ssh.sh
+      bash ./scripts/continue.sh
+      menuprime ;;
+    4 )
+      bash ./scripts/k8s_node_ssh.sh
       bash ./scripts/continue.sh
       menuprime ;;
     A )
       ansible-playbook playbooks/vpc.yml
-      bash ./scripts/rancher_server.sh
+      bash ./scripts/servers.sh
       bash ./scripts/continue.sh
       menuprime ;;
     X )
