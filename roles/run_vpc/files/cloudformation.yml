@@ -1,0 +1,229 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  ProjectName:
+    Description: Nombre del proyecto
+    Type: String
+  CidrBlock:
+    Description: Bloque de IPs para utilizar
+    Type: String
+  AWSRegion:
+    Description: Region de AWS
+    Type: String
+Resources:
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Ref CidrBlock
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Name
+          Value: !Sub '${ ProjectName }-vpc'
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Name
+          Value: !Sub '${ ProjectName }-ig'
+  InternetGatewayVPCAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  PublicSubnetA:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Sub '${ AWSRegion }a'
+      CidrBlock: 10.240.0.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Name
+          Value: !Sub '${ ProjectName }-public-subnet-a'
+  PublicSubnetB:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Sub '${ AWSRegion }b'
+      CidrBlock: 10.240.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Name
+          Value: !Sub '${ ProjectName }-public-subnet-b'
+  PublicSubnetC:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Sub '${ AWSRegion }c'
+      CidrBlock: 10.240.3.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Name
+          Value: !Sub '${ ProjectName }-public-subnet-c'
+  PublicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Name
+          Value: !Sub '${ ProjectName }-public-rt'
+  PublicSubnetAPublicRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetA
+  PublicSubnetBPublicRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetB
+  PublicSubnetCPublicRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetC
+  PublicDefaultRoute:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      GatewayId: !Ref InternetGateway
+      DestinationCidrBlock: 0.0.0.0/0
+    DependsOn:
+      - InternetGateway
+      - InternetGatewayVPCAttachment
+  SecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Default Security Group for project instances
+      GroupName: SecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Name
+          Value: !Sub '${ ProjectName }-sg'
+  NetworkAcl:
+    Type: AWS::EC2::NetworkAcl
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Name
+          Value: !Sub '${ ProjectName }-nacl'
+  NetworkAclEntryEgress:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: true
+      Protocol: -1
+      RuleAction: allow
+      RuleNumber: 100
+      NetworkAclId: !Ref NetworkAcl
+  NetworkAclEntryIngressSSH:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Protocol: 6
+      RuleAction: allow
+      RuleNumber: 100
+      PortRange:
+        From: 22
+        To: 22
+      NetworkAclId: !Ref NetworkAcl
+  NetworkAclEntryIngressHTTP:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Protocol: 6
+      RuleAction: allow
+      RuleNumber: 200
+      PortRange:
+        From: 80
+        To: 80
+      NetworkAclId: !Ref NetworkAcl
+  NetworkAclEntryIngressHTTPS:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Protocol: 6
+      RuleAction: allow
+      RuleNumber: 300
+      PortRange:
+        From: 443
+        To: 443
+      NetworkAclId: !Ref NetworkAcl
+  NetworkAclEntryIngressKubernetesApi:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Protocol: 6
+      RuleAction: allow
+      RuleNumber: 400
+      PortRange:
+        From: 6443
+        To: 6443
+      NetworkAclId: !Ref NetworkAcl
+  NetworkAclEntryIngressEphemeralPorts:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Protocol: 6
+      RuleAction: allow
+      RuleNumber: 1000
+      PortRange:
+        From: 32768
+        To: 61000
+      NetworkAclId: !Ref NetworkAcl
+  SubnetANetworkAclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      SubnetId: !Ref PublicSubnetA
+  SubnetANetworkBclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      SubnetId: !Ref PublicSubnetB
+  SubnetCNetworkBclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      NetworkAclId: !Ref NetworkAcl
+      SubnetId: !Ref PublicSubnetC
+Outputs:
+  VpcId:
+    Description: VPC Id
+    Value: !Ref VPC
+  SecurityGroupId:
+    Description: Security Group Id
+    Value: !Ref SecurityGroup
+  NetworkAclId:
+    Description: Network Acl Id
+    Value: !Ref NetworkAcl
+  PublicSubnetA:
+    Description: SubnetId for PublicSubnetA
+    Value: !Ref PublicSubnetA
+  PublicSubnetB:
+    Description: SubnetId for PublicSubnetB
+    Value: !Ref PublicSubnetB
+  PublicSubnetC:
+    Description: SubnetId for PublicSubnetC
+    Value: !Ref PublicSubnetC

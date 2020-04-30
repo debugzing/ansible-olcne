@@ -1,0 +1,4 @@
+project_name: spot
+vars_file_path: ./vars.yml
+key_name: 'id_rsa'
+public_key_file_path: '~/.ssh/id_rsa.pub'

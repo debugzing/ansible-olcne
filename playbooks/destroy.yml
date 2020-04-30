@@ -1,0 +1,22 @@
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - ../vars.yml
+  vars:
+    state: absent
+  name: Destroy
+  tasks:
+    - import_role:
+        name: run_spotinst_instance
+      vars:
+        output_file_path: '../outputs/rancher_server_managed_instance.json'
+        managed_instance_id: '{{ lookup("file", "../outputs/rancher_server_managed_instance.json") | from_json | json_query("id") }}'
+      tags: ['rancher_server']
+
+    - import_role:
+        name: run_vpc
+      vars:
+        output_file_path: '../outputs/vpc_stack.json'
+        stack_name: '{{ project_name }}-vpc'
+      tags: ['vpc']

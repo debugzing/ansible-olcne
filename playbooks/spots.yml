@@ -1,0 +1,47 @@
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - ../vars.yml
+  name: Create Spot managed instance API
+  tasks:
+    - name: Assert variables
+      assert:
+        that:
+          - domain is defined and domain != ''
+          - hosted_zone_id is defined and domain != '' 
+          - vpc_id is defined
+          - subnet_id_a is defined
+          - subnet_id_b is defined
+          - subnet_id_c is defined
+          - security_group_id is defined
+
+    - name: Create Spot instance
+      include_tasks: ./tasks/spot_instance.yml
+      loop:
+        - instance_name: operator
+          template: "./templates/rancher_spot_managed_instance_configuration.json.j2"
+          subnet_id: '{{ subnet_id_a }}'
+        - instance_name: w1
+          template: "./templates/k8s_spot_managed_instance_configuration.json.j2"
+          subnet_id: '{{ subnet_id_a }}'
+        - instance_name: w2
+          template: "./templates/k8s_spot_managed_instance_configuration.json.j2"
+          subnet_id: '{{ subnet_id_b }}'
+        - instance_name: w3
+          template: "./templates/k8s_spot_managed_instance_configuration.json.j2"
+          subnet_id: '{{ subnet_id_c }}'
+        - instance_name: m1
+          template: "./templates/k8s_spot_managed_instance_configuration.json.j2"
+          subnet_id: '{{ subnet_id_a }}'
+        - instance_name: m2
+          template: "./templates/k8s_spot_managed_instance_configuration.json.j2"
+          subnet_id: '{{ subnet_id_b }}'
+        - instance_name: m3
+          template: "./templates/k8s_spot_managed_instance_configuration.json.j2"
+          subnet_id: '{{ subnet_id_c }}'
+
+
+
+
+

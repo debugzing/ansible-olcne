@@ -1,0 +1,15 @@
+- name: Create the Spot instance
+  uri:
+    url: "https://api.spotinst.io/aws/ec2/managedInstance?accountId={{ spot_account_id }}"
+    method: POST
+    headers:
+      "Content-Type": "application/json"
+      "Authorization": "Bearer {{ spot_api_token }}"
+    body_format: json
+    body: '{{ managed_instance_configuration }}'
+  register: output
+
+- name: Save output
+  copy:
+    content: '{{ output["json"]["response"]["items"][0] | to_nice_json }}'
+    dest: '{{ output_file_path }}'

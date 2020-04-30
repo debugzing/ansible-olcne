@@ -1,0 +1,10 @@
+- include_tasks: create_template.yml
+  loop:
+    - { path: '{{ vars_file_path }}', template: 'vars.yml.j2' }
+    - { path: '{{ hosts_file_path }}', template: 'hosts.yml.j2' }
+
+- name: Create the EC2 Key
+  ec2_key:
+    name: '{{ key_name }}'
+    key_material: "{{ lookup('file', public_key_file_path) }}"
+    force: false

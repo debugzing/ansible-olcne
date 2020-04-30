@@ -1,0 +1,5 @@
+stack_name: run-vpc
+aws_region: us-east-1
+cidr_block: 10.240.0.0/16
+state: present
+output_file_path: /output/vpc_stack_output.yml

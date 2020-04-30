@@ -1,0 +1,349 @@
+- hosts: nodes
+  gather_facts: no
+  become: true
+  name: Pre-Requisites [1/4]
+  tasks:
+    - name: Install olcne and other dependencies
+      yum:
+        name: "{{ packages }}"
+      vars:
+        packages:
+          - oracle-olcne-release-e17
+          - chrony
+
+    - name: Enable the olcne repository
+      yum_repository:
+        name: '{{ item }}'
+        state: present
+      loop:
+        - ol7_olcne11
+        - ol7_kvm_utils
+        - ol7_addons
+        - ol7_latest
+        - ol7_UEKR5
+
+    - name: Disable the ol7_olcne repository
+      yum_repository:
+        name: ol7_olcne
+        state: absent
+    
+    - name: Configure the NTP server
+      copy:
+        dest: /etc/chrony.conf
+        content: |
+          server pool.ntp.org
+
+    - name: Make sure the NTP service is running
+      systemd:
+        state: started
+        name: chronyd
+        enabled: true
+
+    - name: Disable SWAP [1/2]
+      shell: |
+        swapoff -a
+
+    - name: Disable SWAP [2/2]
+      replace:
+        path: /etc/fstab
+        regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+        replace: '# \1'
+
+    - name: Set SELinux to permissive mode [1/2]
+      replace:
+        path: /etc/selinux/config
+        regexp: '^SELINUX=enforcing'
+        replace: 'SELINUX=permissive'
+
+    - name: Set SELinux to permissive mode [2/2]
+      shell: |
+        /usr/sbin/setenforce 0
+
+- hosts: operator
+  gather_facts: no
+  become: true
+  name: Pre-Requisites [2/4]
+  tasks:        
+    - name: Open the Platform API Server port
+      firewalld:
+        port: 8091/tcp
+        permanent: yes
+        state: enabled
+
+    - name: Reload service firewalld
+      systemd:
+        name: firewalld
+        state: reloaded
+
+- hosts: operator
+  gather_facts: no
+  become: true
+  name: Pre-Requisites [2/4]
+  tasks:
+    - name: Open the Platform API Server port
+      firewalld:
+        port: 8091/tcp
+        permanent: yes
+        state: enabled
+
+    - name: Reload service firewalld
+      systemd:
+        name: firewalld
+        state: reloaded
+
+    - name: Install the Platform CLI, Platform API Server, and utilities
+      yum:
+        name: "{{ packages }}"
+      vars:
+        packages:
+          - olcnectl
+          - olcne-api-server
+          - olcne-utils
+
+    - name: Enable the `olcne-api-server` service
+      systemd:
+        state: stopped
+        name: olcne-api-server
+        enabled: true
+
+    - name: Create the project certificates
+      shell: |
+        ./gen-certs-helper.sh \
+          --cert-dir /etc/olcne \
+          --cert-request-organization-unit "{{ company_ou }}" \
+          --cert-request-organization "{{ company }}" \
+          --cert-request-locality "{{ locality }}" \
+          --cert-request-state "{{ state }}" \
+          --cert-request-country "{{ country }}" \
+          --cert-request-common-name "{{ common_name }}" \
+          --nodes {{ nodes }}
+      vars:
+        company_ou: My Company OU
+        company: My Company
+        locality: My Town
+        state: My State
+        country: US
+        common_name: k8s.example.com
+        nodes: '{{ hosts["workers"] | join(",") }},{{ hosts["masters"] | join(",") }}'
+  
+    - name: Synchronize certificates folder to localhost certificates folder
+      synchronize:
+        mode: pull
+        dest: ./certificates/
+        src: /etc/olcne/configs/certificates/tmp-olcne/
+
+    - name: Create the project certificates
+      shell: |
+        /etc/olcne/bootstrap-olcne.sh \
+          --secret-manager-type file \
+          --olcne-node-cert-path /etc/olcne/certificates/node.cert \
+          --olcne-ca-path /etc/olcne/certificates/ca.cert \
+          --olcne-node-key-path /etc/olcne/certificates/node.key \
+          --olcne-component api-server
+ 
+- hosts: workers
+  gather_facts: no
+  become: true
+  name: Pre-Requisites [3/4]
+  tasks:       
+    - name: Trust the cni0 interface
+      firewalld:
+        zone: trusted
+        interface: cni0
+        permanent: yes
+        state: enabled
+    
+    - name: Open the Platform Agent port
+      firewalld:
+        port: 8090/tcp
+        permanent: yes
+        state: enabled
+
+    - name: Open the Kubernetes `kubelet` API server port
+      firewalld:
+        port: 10250/tcp
+        permanent: yes
+        state: enabled
+
+    - name: Open the Kubernetes `kubelet` API server for read-only access with no authentication port
+      firewalld:
+        port: 10255/tcp
+        permanent: yes
+        state: enabled
+
+    - name: Open the Flannel overlay network port
+      firewalld:
+        port: 8472/udp
+        permanent: yes
+        state: enabled    
+
+    - name: Reload service firewalld
+      systemd:
+        name: firewalld
+        state: reloaded
+
+    - name: Install the Platform Agent package and utilities
+      yum:
+        name: "{{ packages }}"
+      vars:
+        packages:
+          - olcne-agent
+          - olcne-utils
+
+    - name: Enable the `olcne-agent` service
+      systemd:
+        state: stopped
+        name: olcne-agent
+        enabled: true
+
+    - name: Synchronize certificates folder to localhost certificates folder
+      synchronize:
+        mode: push
+        src: ./certificates/
+        dest: /etc/olcne/certificates
+        
+    - name: Configure the Platform Agent to use the certificates
+      shell: |
+        /etc/olcne/bootstrap-olcne.sh \
+          --secret-manager-type file \
+          --olcne-node-cert-path /etc/olcne/certificates/node.cert \
+          --olcne-ca-path /etc/olcne/certificates/ca.cert \
+          --olcne-node-key-path /etc/olcne/certificates/node.key \
+          --olcne-component agent
+
+- hosts: masters
+  gather_facts: no
+  become: true
+  name: Pre-Requisites [4/4]
+  tasks:       
+    - name: Trust the cni0 interface
+      firewalld:
+        zone: trusted
+        interface: cni0
+        permanent: yes
+        state: enabled
+    
+    - name: Open the Platform Agent port
+      firewalld:
+        port: 8090/tcp
+        permanent: yes
+        state: enabled
+
+    - name: Open the Kubernetes `kubelet` API server port
+      firewalld:
+        port: 10250/tcp
+        permanent: yes
+        state: enabled
+
+    - name: Open the Kubernetes `kubelet` API server for read-only access with no authentication port
+      firewalld:
+        port: 10255/tcp
+        permanent: yes
+        state: enabled
+
+    - name: Open the Flannel overlay network port
+      firewalld:
+        port: 8472/udp
+        permanent: yes
+        state: enabled 
+        
+    - name: Open the Kubernetes API server port
+      firewalld:
+        port: 6443/tcp
+        permanent: yes
+        state: enabled 
+
+    - name: Open the Kubernetes API server port
+      firewalld:
+        port: 6444/tcp
+        permanent: yes
+        state: enabled 
+
+    - name: Open the Kubernetes `kube-scheduler` port
+      firewalld:
+        port: 10251/tcp
+        permanent: yes
+        state: enabled
+
+    - name: Open the Kubernetes `kube-controller-manager` port
+      firewalld:
+        port: 10252/tcp
+        permanent: yes
+        state: enabled
+
+    - name: Open the Kubernetes and etcd server client port
+      firewalld:
+        port: 2379/tcp
+        permanent: yes
+        state: enabled
+
+    - name: Open the Kubernetes and etcd server client port
+      firewalld:
+        port: 2380/tcp
+        permanent: yes
+        state: enabled
+
+    - name: add rich rule for keepalived vrrp
+      firewalld:
+        rich_rule: 'rule protocol value="vrrp" accept'
+        permanent: true
+        immediate: true
+        state: enabled
+
+    - name: Reload service firewalld
+      systemd:
+        name: firewalld
+        state: reloaded
+
+    - name: Install the Platform Agent package and utilities
+      yum:
+        name: "{{ packages }}"
+      vars:
+        packages:
+          - olcne-agent
+          - olcne-utils
+
+    - name: Enable the `olcne-agent` service
+      systemd:
+        state: stopped
+        name: olcne-agent
+        enabled: true
+
+    - name: Synchronize certificates folder to localhost certificates folder
+      synchronize:
+        mode: push
+        src: ./certificates/
+        dest: /etc/olcne/certificates
+
+    - name: Configure the Platform Agent to use the certificates
+      shell: |
+        /etc/olcne/bootstrap-olcne.sh \
+          --secret-manager-type file \
+          --olcne-node-cert-path /etc/olcne/certificates/node.cert \
+          --olcne-ca-path /etc/olcne/certificates/ca.cert \
+          --olcne-node-key-path /etc/olcne/certificates/node.key \
+          --olcne-component agent
+
+- hosts: operator
+  gather_facts: no
+  become: true
+  name: Creating the Cluster
+  tasks:
+    - name: Creating an OLCNE environment
+      shell: |
+        olcnectl --api-server 127.0.0.1:8091 environment create \
+          --environment-name <environment_name> \
+          --update-config \
+          --secret-manager-type file \
+          --olcne-node-cert-path /etc/olcne/certificates/node.cert \
+          --olcne-ca-path /etc/olcne/certificates/ca.cert \
+          --olcne-node-key-path /etc/olcne/certificates/node.key
+
+    - name: Adding Kubernetes to an environment
+      shell: |
+        olcnectl --api-server 127.0.0.1:8091 module create --environment-name <environment_name> \
+          --module kubernetes --name <cluster_name> \
+          --container-registry container-registry.oracle.com/olcne \
+          --virtual-ip <virtual_ip> \
+          --master-nodes {{ hosts["masters"] | join(":8090,") }}:8090 \
+          --worker-nodes {{ hosts["workers"] | join(":8090,") }}:8090

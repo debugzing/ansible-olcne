@@ -1,0 +1,6 @@
+stack_name: run-instance
+state: present
+output_file_path: /output/instance_stack_output.json
+image_id: ami-085925f297f89fce1
+instance_name: '{{ stack_name }}-instance'
+instance_type: 'm5.large'

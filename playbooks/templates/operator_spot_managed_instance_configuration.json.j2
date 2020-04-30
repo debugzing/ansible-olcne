@@ -1,0 +1,123 @@
+{
+  "managedInstance": {
+    "name": "{{ instance_name }}",
+    "description": "OLCNE Operator Node",
+    "region": "{{ aws_region }}",
+    "strategy": {
+      "lifeCycle": "spot",
+      "orientation": "balanced",
+      "drainingTimeout": 120,
+      "fallbackToOd": true,
+      "optimizationWindows": [
+        "Mon:00:00-Mon:23:59",
+        "Tue:00:00-Tue:23:59",
+        "Wed:00:00-Wed:23:59",
+        "Thu:00:00-Thu:23:59",
+        "Fri:00:00-Fri:23:59",
+        "Sat:00:00-Sat:23:59",
+        "Sun:00:00-Sun:23:59"
+      ],
+      "revertToSpot": {
+        "performAt": "always"
+      }
+    },
+    "persistence": {
+      "persistPrivateIp": false,
+      "persistBlockDevices": false,
+      "persistRootDevice": true,
+      "blockDevicesMode": null
+    },
+    "healthCheck": {
+      "type": "EC2",
+      "autoHealing": true,
+      "gracePeriod": 120,
+      "unhealthyDuration": 120
+    },
+    "compute": {
+      "subnetIds": [
+        "{{ subnet_id }}"
+      ],
+      "vpcId": "{{ vpc_id }}",
+      "launchSpecification": {
+        "instanceTypes": {
+          "preferredType": "t3.large",
+          "types": [
+            "m5a.large",
+            "t3.large",
+            "m5ad.large",
+            "t3a.large",
+            "m1.xlarge",
+            "t2.large",
+            "m3.large",
+            "m4.large",
+            "m5.large",
+            "m5dn.large",
+            "m3.xlarge",
+            "m1.large",
+            "a1.xlarge",
+            "m5n.large",
+            "m5d.large"
+          ]
+        },
+        "monitoring": false,
+        "securityGroupIds": [
+          "{{ security_group_id }}"
+        ],
+        "imageId": "{{ oracle_linux_ami }}",
+        "keyPair": "{{ key_name }}",
+        "tags": [
+          {
+            "tagKey": "Project",
+            "tagValue": "{{ project_name }}"
+          },
+          {
+            "tagKey": "Name",
+            "tagValue": "{{ instance_name }}"
+          }
+        ],
+        "userData": null,
+        "networkInterfaces": [
+          {
+            "deviceIndex": 0,
+            "associatePublicIpAddress": true,
+            "associateIpv6Address": false
+          }
+        ],
+        "creditSpecification": {
+          "cpuCredits": "standard"
+        }
+      },
+      "product": "Linux/UNIX"
+    },
+    "integrations": {
+      "route53": {
+        "domains": [
+          {
+            "hostedZoneId": "{{ hosted_zone_id }}",
+            "recordSets": [
+              {
+                "name": "{{ instance_name }}.{{ domain }}.",
+                "usePublicIp": true
+              }
+            ]
+          }
+        ]
+      },
+      "loadBalancersConfig": null
+    },
+    "scheduling": {
+      "tasks": [
+        {
+          "isEnabled": true,
+          "taskType": "pause",
+          "cronExpression": "00 23 * * 1,2,3,4,5"
+        },
+        {
+          "isEnabled": true,
+          "taskType": "resume",
+          "cronExpression": "00 11 * * 1,2,3,4,5"
+        }
+      ]
+    }
+  }
+}

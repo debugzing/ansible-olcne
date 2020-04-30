@@ -1,0 +1,20 @@
+all:
+  children:
+    nodes:
+      children:
+        operator:
+          hosts:
+            operator.k8s.{{ domain }}:
+        workers:
+          hosts:
+            w1.k8s.{{ domain }}:
+            w2.k8s.{{ domain }}:
+            w3.k8s.{{ domain }}:
+        masters:
+          hosts:
+            m1.k8s.{{ domain }}:
+            m2.k8s.{{ domain }}:
+            m3.k8s.{{ domain }}:
+  vars:
+    ansible_ssh_private_key: {{ private_key_file_path }}
+    ansible_ssh_user: {{ ssh_user }}

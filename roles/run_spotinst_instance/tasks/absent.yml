@@ -1,0 +1,22 @@
+- name: Destroy the Spot instance
+  uri:
+    url: "https://api.spotinst.io/aws/ec2/managedInstance/{{ managed_instance_id }}?accountId={{ spot_account_id }}"
+    method: DELETE
+    headers:
+      "Content-Type": "application/json"
+      "Authorization": "Bearer {{ spot_api_token }}"
+    body_format: json
+    body: 
+      deallocationConfig:
+        shouldDeleteImages: true
+        shouldDeleteNetworkInterfaces: true
+        shouldDeleteVolumes: true
+        shouldDeleteSnapshots: true
+      amiBackup:
+        shouldDeleteImages: true
+  register: output
+
+- name: Destroy the managed instance output file
+  file:
+    path: '{{ output_file_path }}'
+    state: 'absent'

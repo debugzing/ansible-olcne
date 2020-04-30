@@ -1,0 +1,9 @@
+- name: Destroy the CloudFormation stack
+  cloudformation:
+    stack_name: "{{ stack_name }}"
+    state: "absent"
+
+- name: Destroy the CloudFormation stack output file
+  file:
+    path: '{{ output_file_path }}'
+    state: 'absent'

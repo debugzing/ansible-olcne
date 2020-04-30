@@ -1,0 +1,12 @@
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - ../vars.yml
+  name: Create the project VPC
+  tasks:
+    - import_role:
+        name: run_vpc
+      vars:
+        output_file_path: '../outputs/vpc_stack.json'
+        stack_name: '{{ project_name }}-vpc'

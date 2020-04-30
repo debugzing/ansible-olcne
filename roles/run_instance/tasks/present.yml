@@ -1,0 +1,21 @@
+- name: Create the CloudFormation stack
+  cloudformation:
+    stack_name: '{{ stack_name }}'
+    state: 'present'
+    region: '{{ aws_region }}'
+    disable_rollback: true
+    template_body: '{{ lookup("file", "cloudformation.yml") }}'
+    template_parameters:
+      ImageId: '{{ image_id }}'
+      InstanceName: '{{ instance_name }}'
+      InstanceType: '{{ instance_type }}'
+      KeyName: '{{ key_name }}'
+      ProjectName: '{{ project_name }}'
+      SecurityGroup: '{{ security_group_id }}'
+      SubnetId: '{{ subnet_id }}'
+  register: output
+
+- name: Save output
+  copy:
+    content: '{{ output | to_nice_json }}'
+    dest: '{{ output_file_path }}'
