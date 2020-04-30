@@ -3,8 +3,17 @@ Parameters:
   ProjectName:
     Description: Nombre del proyecto
     Type: String
-  CidrBlock:
-    Description: Bloque de IPs para utilizar
+  VPCCidrBlock:
+    Description: Bloque de IPs para utilizar dentro del VPC
+    Type: String
+  PublicSubnetACidrBlock:
+    Description: Bloque de IPs para utilizar dentro de la subnet pública A
+    Type: String
+  PublicSubnetBCidrBlock:
+    Description: Bloque de IPs para utilizar dentro de la subnet pública B
+    Type: String
+  PublicSubnetCCidrBlock:
+    Description: Bloque de IPs para utilizar dentro de la subnet pública C
     Type: String
   AWSRegion:
     Description: Region de AWS
@@ -13,7 +22,7 @@ Resources:
   VPC:
     Type: 'AWS::EC2::VPC'
     Properties:
-      CidrBlock: !Ref CidrBlock
+      CidrBlock: !Ref VPCCidrBlock
       EnableDnsHostnames: true
       EnableDnsSupport: true
       Tags:
@@ -39,7 +48,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Sub '${ AWSRegion }a'
-      CidrBlock: 10.240.0.0/24
+      CidrBlock: !Ref PublicSubnetACidrBlock
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Project
@@ -51,7 +60,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Sub '${ AWSRegion }b'
-      CidrBlock: 10.240.1.0/24
+      CidrBlock: !Ref PublicSubnetBCidrBlock
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Project
@@ -63,7 +72,7 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Sub '${ AWSRegion }c'
-      CidrBlock: 10.240.3.0/24
+      CidrBlock: !Ref PublicSubnetCCidrBlock
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Project

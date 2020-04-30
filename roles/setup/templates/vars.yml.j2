@@ -1,5 +1,11 @@
 aws_region: us-east-1
-cidr_block: 10.240.0.0/16
+vpc_cidr_prefix: {{ vpc_cidr_prefix }}
+vpc_cidr_mask: {{ vpc_cidr_mask }}
+vpc_cidr_block: '{{ vpc_cidr_prefix }}.0.0/{{ vpc_cidr_mask }}'
+public_subnet_cidr_mask: {{ public_subnet_cidr_mask }}
+public_subnet_a_cidr_block: '{{ vpc_cidr_prefix }}.0.0/{{ public_subnet_cidr_mask }}'
+public_subnet_b_cidr_block: '{{ vpc_cidr_prefix }}.1.0/{{ public_subnet_cidr_mask }}'
+public_subnet_c_cidr_block: '{{ vpc_cidr_prefix }}.2.0/{{ public_subnet_cidr_mask }}'
 domain: '{{ domain }}'
 key_name: '{{ key_name }}'
 project_name: '{{ project_name }}'

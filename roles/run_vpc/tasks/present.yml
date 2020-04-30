@@ -7,7 +7,10 @@
     template_body: '{{ lookup("file", "cloudformation.yml") }}'
     template_parameters:
       ProjectName: '{{ project_name }}'
-      CidrBlock: '{{ cidr_block }}'
+      VPCCidrBlock: '{{ cidr_block }}'
+      PublicSubnetACidrBlock: '{{ public_subnet_a_cidr_block }}'
+      PublicSubnetBCidrBlock: '{{ public_subnet_b_cidr_block }}'
+      PublicSubnetCCidrBlock: '{{ public_subnet_c_cidr_block }}'
       AWSRegion: '{{ aws_region }}'
   register: output
 

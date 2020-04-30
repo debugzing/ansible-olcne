@@ -7,12 +7,20 @@
     state: absent
   name: Destroy
   tasks:
-    - import_role:
+    - include_role:
         name: run_spotinst_instance
       vars:
-        output_file_path: '../outputs/rancher_server_managed_instance.json'
-        managed_instance_id: '{{ lookup("file", "../outputs/rancher_server_managed_instance.json") | from_json | json_query("id") }}'
-      tags: ['rancher_server']
+        output_file_path: '../outputs/{{ instance_name }}_managed_instance.json'
+        managed_instance_id: '{{ lookup("file", "../outputs/{{ instance_name }}_managed_instance.json") | from_json | json_query("id") }}'
+      loop:
+        - instance_name: operator
+        - instance_name: w1
+        - instance_name: w2
+        - instance_name: w3
+        - instance_name: m1
+        - instance_name: m2
+        - instance_name: m3
+      tags: ['servers']
 
     - import_role:
         name: run_vpc

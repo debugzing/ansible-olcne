@@ -22,7 +22,7 @@ menuprime(){
 
 🌵 Select one of the following options:
 
-[1] Destroy the Rancher Server
+[1] Destroy the servers
 [2] Destroy the project VPC
 
 [X] Destroy All
@@ -35,7 +35,7 @@ EOF
 
   case $typed in
     1 )
-      ansible-playbook playbooks/destroy.yml --tags rancher_server --extra-vars "$EXTRA_VARS"
+      ansible-playbook playbooks/destroy.yml --tags servers --extra-vars "$EXTRA_VARS"
       bash ./scripts/continue.sh
       menuprime ;;
     2 )
