@@ -1,97 +1,97 @@
 {
-  "managedInstance": {
-    "name": "{{ item.instance_name }}",
-    "description": "OLCNE K8s Node",
-    "region": "{{ aws_region }}",
-    "strategy": {
-      "revertToSpot": {
-        "performAt": "always"
-      }
-    },
-    "persistence": {
-      "persistPrivateIp": true,
-      "persistBlockDevices": true,
-      "persistRootDevice": true,
-      "blockDevicesMode": "onLaunch"
-    },
-    "healthCheck": {
-      "type": "EC2",
-      "autoHealing": true,
-      "gracePeriod": 120,
-      "unhealthyDuration": 120
-    },
-    "compute": {
-      "subnetIds": [
-        "{{ subnet_id }}"
-      ],
-      "vpcId": "{{ vpc_id }}",
-      "launchSpecification": {
-        "instanceTypes": {
-          "preferredType": "t3.large",
-          "types": [
-            "a1.xlarge",
-            "m3.xlarge",
-            "m4.large",
-            "m5dn.large",
-            "m1.xlarge",
-            "t3.large",
-            "m5n.large",
-            "t2.large",
-            "m5.large",
-            "m5d.large",
-            "m1.large",
-            "t3a.large",
-            "m5ad.large",
-            "m5a.large",
-            "m3.large"
-          ]
+    "managedInstance": {
+        "name": "{{ item.instance_name }}",
+        "description": "OLCNE K8s Node",
+        "region": "{{ aws_region }}",
+        "strategy": {
+            "revertToSpot": {
+                "performAt": "always"
+            }
         },
-        "securityGroupIds": [
-          "{{ security_group_id }}"
-        ],
-        "imageId": "{{ oracle_linux_ami }}",
-        "keyPair": "{{ key_name }}",
-        "tags": [
-          {
-            "tagKey": "Project",
-            "tagValue": "{{ project_name }}"
-          },
-          {
-            "tagKey": "Name",
-            "tagValue": "{{ item.instance_name }}"
-          }
-        ],
-        "userData": null,
-        "networkInterfaces": [
-          {
-            "deviceIndex": 0,
-            "associatePublicIpAddress": false,
-            "associateIpv6Address": false
-          }
-        ],
-        "creditSpecification": {
-          "cpuCredits": "standard"
+        "persistence": {
+            "persistPrivateIp": true,
+            "persistBlockDevices": true,
+            "persistRootDevice": true,
+            "blockDevicesMode": "onLaunch"
         },
-      },
-      "privateIp": "{{ item.private_ip }}",
-      "product": "Linux/UNIX"
-    },
-    "integrations": {
-      "route53": {
-        "domains": [
-          {
-            "hostedZoneId": "{{ hosted_zone_id }}",
-            "recordSets": [
-              {
-                "name": "{{ item.instance_name }}.{{ domain }}.",
-                "usePublicIp": false
-              }
-            ]
-          }
-        ]
-      },
-      "loadBalancersConfig": null
-    },
-    "scheduling": {}
-  }
+        "healthCheck": {
+            "type": "EC2",
+            "autoHealing": true,
+            "gracePeriod": 120,
+            "unhealthyDuration": 120
+        },
+        "compute": {
+            "subnetIds": [
+                "{{ subnet_id }}"
+            ],
+            "vpcId": "{{ vpc_id }}",
+            "launchSpecification": {
+                "instanceTypes": {
+                    "preferredType": "t3.large",
+                    "types": [
+                        "a1.xlarge",
+                        "m3.xlarge",
+                        "m4.large",
+                        "m5dn.large",
+                        "m1.xlarge",
+                        "t3.large",
+                        "m5n.large",
+                        "t2.large",
+                        "m5.large",
+                        "m5d.large",
+                        "m1.large",
+                        "t3a.large",
+                        "m5ad.large",
+                        "m5a.large",
+                        "m3.large"
+                    ]
+                },
+                "securityGroupIds": [
+                    "{{ security_group_id }}"
+                ],
+                "imageId": "{{ oracle_linux_ami }}",
+                "keyPair": "{{ key_name }}",
+                "tags": [
+                    {
+                        "tagKey": "Project",
+                        "tagValue": "{{ project_name }}"
+                    },
+                    {
+                        "tagKey": "Name",
+                        "tagValue": "{{ item.instance_name }}"
+                    }
+                ],
+                "userData": null,
+                "networkInterfaces": [
+                    {
+                        "deviceIndex": 0,
+                        "associatePublicIpAddress": true,
+                        "associateIpv6Address": false
+                    }
+                ],
+                "creditSpecification": {
+                    "cpuCredits": "standard"
+                }
+            },
+            "privateIp": "{{ item.private_ip }}",
+            "product": "Linux/UNIX"
+        },
+        "integrations": {
+            "route53": {
+                "domains": [
+                    {
+                        "hostedZoneId": "{{ hosted_zone_id }}",
+                        "recordSets": [
+                            {
+                                "name": "{{ item.instance_name }}.{{ domain }}.",
+                                "usePublicIp": false
+                            }
+                        ]
+                    }
+                ]
+            },
+            "loadBalancersConfig": null
+        },
+        "scheduling": {}
+    }
 }

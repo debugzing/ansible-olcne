@@ -6,7 +6,7 @@
 # GNU:        General Public License v3.0
 ###############################################################################
 
-ansible-playbook playbooks/spots.yml --extra-vars \
+ansible-playbook playbooks/servers.yml --extra-vars \
   "spot_account_id=$SPOT_ACCOUNT_ID \ 
   spot_api_token=$SPOT_API_TOKEN \
   private_key_file_path=$PRIVATE_KEY_FILE_PATH \

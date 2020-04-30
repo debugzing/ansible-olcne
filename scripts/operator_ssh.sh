@@ -10,4 +10,4 @@
 host="operator.$(cat vars.yml | grep domain | cut -d ':' -f2 | sed 's/^ *//g')"
 user=$(cat hosts.yml | grep ansible_ssh_user | cut -d ':' -f2 | sed 's/^ *//g')
 
-ssh -i $PRIVATE_KEY_FILE_PATH $user@$host
+ssh -i $PRIVATE_KEY_FILE_PATH $user@$host -o StrictHostKeyChecking=no

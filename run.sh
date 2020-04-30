@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Title:      Spot AWS
+# Title:      Oracle Linux Cloud Native Environment Kubernetes Cluster
 # Author(s):  Guzmán Monné
 # URL:        https://github.com/conatel-i-d/elastic-enterprise-search-demo
 # GNU:        Genral Public Licencse v3.0
@@ -39,8 +39,9 @@ EOF
 [0] Setup the project
 [1] Create the project VPC
 [2] Create the Operator, Master, and Worker nodes
-[3] SSH to Operator Server
-[4] SSH to K8s Node
+[3] Bootstrap the cluster
+[4] SSH to Operator Server
+[5] SSH to K8s Node
 
 [A] Deploy
 [X] Destroy
@@ -64,11 +65,15 @@ EOF
       bash ./scripts/servers.sh
       bash ./scripts/continue.sh
       menuprime ;;
-    3 )
-      bash ./scripts/operator_ssh.sh
+    3)
+      bash ./scripts/bootstrap.sh
       bash ./scripts/continue.sh
       menuprime ;;
     4 )
+      bash ./scripts/operator_ssh.sh
+      bash ./scripts/continue.sh
+      menuprime ;;
+    5 )
       bash ./scripts/k8s_node_ssh.sh
       bash ./scripts/continue.sh
       menuprime ;;

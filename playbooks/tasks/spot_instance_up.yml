@@ -1,6 +1,3 @@
-- debug:
-    var: item
-
 - name: Check if the instance output exists
   stat:
     path:  '../outputs/{{ item.instance_name }}_managed_instance.json'

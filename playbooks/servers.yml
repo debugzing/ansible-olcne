@@ -18,7 +18,7 @@
           - security_group_id is defined
 
     - name: Create Spot instance
-      include_tasks: ./tasks/spot_instance.yml
+      include_tasks: ./tasks/spot_instance_up.yml
       loop:
         - instance_name: operator
           template: "./templates/operator_spot_managed_instance_configuration.json.j2"

@@ -1,0 +1,12 @@
+- name: Check if the instance output exists
+  stat:
+    path:  '../outputs/{{ item }}_managed_instance.json'
+  register: instance_output
+
+- name: Removing spot instances
+  include_role:
+    name: run_spotinst_instance
+  vars:
+    output_file_path: '../outputs/{{ item }}_managed_instance.json'
+    managed_instance_id: '{{ lookup("file", "../outputs/{{ item }}_managed_instance.json") | from_json | json_query("id") }}'
+  when: instance_output.stat.exists == True

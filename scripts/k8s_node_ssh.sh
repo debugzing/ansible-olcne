@@ -15,4 +15,4 @@ domain=$(cat vars.yml | grep domain | cut -d ':' -f2 | sed 's/^ *//g')
 user=$(cat hosts.yml | grep ansible_ssh_user | cut -d ':' -f2 | sed 's/^ *//g')
 host="$typed.$domain"
 
-ssh -o ProxyCommand="ssh -A ec2-user@operator.$domain -W %h:%p" -o StrictHostKeyChecking=no $user@$host
+ssh -o ProxyCommand="ssh -A ec2-user@operator.$domain -W %h:%p -o StrictHostKeyChecking=no" -o StrictHostKeyChecking=no -A $user@$host

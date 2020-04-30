@@ -3,24 +3,40 @@
   become: true
   name: Pre-Requisites [1/4]
   tasks:
+    - name: Update YUM cache
+      yum:
+        update_cache: yes
+
     - name: Install olcne and other dependencies
       yum:
         name: "{{ packages }}"
       vars:
         packages:
-          - oracle-olcne-release-e17
+          - oracle-olcne-release-el7
           - chrony
 
     - name: Enable the olcne repository
       yum_repository:
-        name: '{{ item }}'
+        name: '{{ item.name }}'
+        description: '{{ item.description }}'
         state: present
+        baseurl: '{{ item.baseurl }}'
       loop:
-        - ol7_olcne11
-        - ol7_kvm_utils
-        - ol7_addons
-        - ol7_latest
-        - ol7_UEKR5
+        - name: ol7_olcne11
+          description: Latest packages for Oracle Linux Cloud Native Environment Release 1.1 Oracle Linux 7 (x86_64)
+          baseurl: 'http://yum.oracle.com/repo/OracleLinux/OL7/olcne11/x86_64'
+        - name: ol7_kvm_utils
+          description: KVM Utilities - Oracle Linux 7 (x86_64)
+          baseurl: 'http://yum.oracle.com/repo/OracleLinux/OL7/kvm/utils/x86_64'
+        - name: ol7_addons
+          description: Latest add-on packages for Oracle Linux 7 (x86_64)
+          baseurl: 'http://yum.oracle.com/repo/OracleLinux/OL7/addons/x86_64'
+        - name: ol7_latest
+          description: Latest packages for Oracle Linux 7 (x86_64)
+          baseurl: 'http://yum.oracle.com/repo/OracleLinux/OL7/latest/x86_64'
+        - name: ol7_UEKR5
+          description: Archived packages for UEK Release 5 Oracle Linux 7 (x86_64)
+          baseurl: 'http://yum.oracle.com/repo/OracleLinux/OL7/UEKR5/archive/x86_64'
 
     - name: Disable the ol7_olcne repository
       yum_repository:
@@ -75,30 +91,21 @@
         name: firewalld
         state: reloaded
 
-- hosts: operator
-  gather_facts: no
-  become: true
-  name: Pre-Requisites [2/4]
-  tasks:
-    - name: Open the Platform API Server port
-      firewalld:
-        port: 8091/tcp
-        permanent: yes
-        state: enabled
-
-    - name: Reload service firewalld
-      systemd:
-        name: firewalld
-        state: reloaded
-
-    - name: Install the Platform CLI, Platform API Server, and utilities
+    - name: Update YUM cache
       yum:
-        name: "{{ packages }}"
-      vars:
-        packages:
-          - olcnectl
-          - olcne-api-server
-          - olcne-utils
+        update_cache: yes
+
+    - name: Install the Platform CLI
+      yum:
+        name: olcnectl
+
+    - name: Install the Platform API Server
+      yum:
+        name: olcne-api-server
+    
+    - name: Install utilities
+      yum:
+        name: olcne-utils
 
     - name: Enable the `olcne-api-server` service
       systemd:
@@ -108,7 +115,7 @@
 
     - name: Create the project certificates
       shell: |
-        ./gen-certs-helper.sh \
+        /etc/olcne/gen-certs-helper.sh \
           --cert-dir /etc/olcne \
           --cert-request-organization-unit "{{ company_ou }}" \
           --cert-request-organization "{{ company }}" \
@@ -124,7 +131,7 @@
         state: My State
         country: US
         common_name: k8s.example.com
-        nodes: '{{ hosts["workers"] | join(",") }},{{ hosts["masters"] | join(",") }}'
+        nodes: '{{ groups["workers"] | join(",") }},{{ groups["masters"] | join(",") }}'
   
     - name: Synchronize certificates folder to localhost certificates folder
       synchronize:
@@ -345,5 +352,5 @@
           --module kubernetes --name <cluster_name> \
           --container-registry container-registry.oracle.com/olcne \
           --virtual-ip <virtual_ip> \
-          --master-nodes {{ hosts["masters"] | join(":8090,") }}:8090 \
-          --worker-nodes {{ hosts["workers"] | join(":8090,") }}:8090
+          --master-nodes {{ groups["masters"] | join(":8090,") }}:8090 \
+          --worker-nodes {{ groups["workers"] | join(":8090,") }}:8090
