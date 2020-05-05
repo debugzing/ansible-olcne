@@ -2,3 +2,5 @@
 outputs
 hosts.yml
 vars.yml
+playbooks/certificates
+.DS_Store

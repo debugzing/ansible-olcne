@@ -15,6 +15,23 @@
           - oracle-olcne-release-el7
           - chrony
 
+    - name: Define needed locales (for example, can be set in vars or inventory)
+      set_fact:
+        system_settings_locales:
+          - en_US.UTF-8
+    
+    - name: Check existing locales
+      shell: "locale -a | grep -i {{ item | regex_replace('-', '') | quote }}"
+      register: found_locales
+      changed_when: false
+      failed_when: false
+      loop: "{{ system_settings_locales }}"
+    
+    - name: Create missing locales
+      command: "localedef -i {{ item.item | regex_replace('(.*)\\..*', '\\1') | quote }} -f {{ item.item | regex_replace('.*\\.(.*)', '\\1') | quote }} {{ item.item | quote }}"
+      when: item.rc != 0
+      loop: "{{ found_locales.results }}"
+
     - name: Enable the olcne repository
       yum_repository:
         name: '{{ item.name }}'
@@ -22,21 +39,21 @@
         state: present
         baseurl: '{{ item.baseurl }}'
       loop:
+        - name: ol7_addons
+          description: Latest add-on packages for Oracle Linux 7 (x86_64)
+          baseurl: 'http://yum.oracle.com/repo/OracleLinux/OL7/addons/x86_64'
         - name: ol7_olcne11
           description: Latest packages for Oracle Linux Cloud Native Environment Release 1.1 Oracle Linux 7 (x86_64)
           baseurl: 'http://yum.oracle.com/repo/OracleLinux/OL7/olcne11/x86_64'
         - name: ol7_kvm_utils
           description: KVM Utilities - Oracle Linux 7 (x86_64)
           baseurl: 'http://yum.oracle.com/repo/OracleLinux/OL7/kvm/utils/x86_64'
-        - name: ol7_addons
-          description: Latest add-on packages for Oracle Linux 7 (x86_64)
-          baseurl: 'http://yum.oracle.com/repo/OracleLinux/OL7/addons/x86_64'
         - name: ol7_latest
           description: Latest packages for Oracle Linux 7 (x86_64)
           baseurl: 'http://yum.oracle.com/repo/OracleLinux/OL7/latest/x86_64'
         - name: ol7_UEKR5
           description: Archived packages for UEK Release 5 Oracle Linux 7 (x86_64)
-          baseurl: 'http://yum.oracle.com/repo/OracleLinux/OL7/UEKR5/archive/x86_64'
+          baseurl: 'http://yum.oracle.com/repo/OracleLinux/OL7/UEKR5/x86_64'
 
     - name: Disable the ol7_olcne repository
       yum_repository:
@@ -95,17 +112,20 @@
       yum:
         update_cache: yes
 
-    - name: Install the Platform CLI
+    - name: Install the Platform CLI, the Platform API Server, and utilities
       yum:
-        name: olcnectl
+        name: '{{ item }}'
+      loop:
+        - olcnectl
+        - olcne-utils
+        - olcne-api-server
 
-    - name: Install the Platform API Server
+    - name: Install needed dependencies
       yum:
-        name: olcne-api-server
-    
-    - name: Install utilities
-      yum:
-        name: olcne-utils
+        name: '{{ item }}'
+      loop:
+        - openssl
+        - rsync
 
     - name: Enable the `olcne-api-server` service
       systemd:
@@ -131,23 +151,36 @@
         state: My State
         country: US
         common_name: k8s.example.com
-        nodes: '{{ groups["workers"] | join(",") }},{{ groups["masters"] | join(",") }}'
+        nodes: '{{ groups["operator"] | join(",") }},{{ groups["workers"] | join(",") }},{{ groups["masters"] | join(",") }}'
+
+    - name: Create the certificates folder
+      file:
+        state: directory
+        dest: ./certificates
+      become: false
+      delegate_to: localhost
   
     - name: Synchronize certificates folder to localhost certificates folder
       synchronize:
         mode: pull
-        dest: ./certificates/
-        src: /etc/olcne/configs/certificates/tmp-olcne/
+        dest: ./certificates
+        src: /etc/olcne/production
 
-    - name: Create the project certificates
+    - name: Synchronize certificates folder to localhost certificates folder
+      synchronize:
+        mode: pull
+        dest: ./certificates
+        src: /etc/olcne/tmp-olcne
+
+    - name: Bootstrap the project
       shell: |
         /etc/olcne/bootstrap-olcne.sh \
           --secret-manager-type file \
-          --olcne-node-cert-path /etc/olcne/certificates/node.cert \
-          --olcne-ca-path /etc/olcne/certificates/ca.cert \
-          --olcne-node-key-path /etc/olcne/certificates/node.key \
+          --olcne-ca-path /etc/olcne/production/ca.cert \
+          --olcne-node-cert-path /etc/olcne/tmp-olcne/{{ ansible_host }}/node.cert \
+          --olcne-node-key-path /etc/olcne/tmp-olcne/{{ ansible_host }}/node.key \
           --olcne-component api-server
- 
+
 - hosts: workers
   gather_facts: no
   become: true
@@ -203,11 +236,32 @@
         name: olcne-agent
         enabled: true
 
-    - name: Synchronize certificates folder to localhost certificates folder
-      synchronize:
-        mode: push
-        src: ./certificates/
-        dest: /etc/olcne/certificates
+    - name: Copy file with owner and permissions
+      copy:
+        src: './certificates/tmp-olcne/{{ ansible_host }}/{{ item }}'
+        dest: '/etc/olcne/certificates/{{ item }}'
+        force: true
+      loop:
+        - csr.info
+        - node.cert
+        - node.csr
+        - node.key
+
+    - name: Copy file with owner and permissions
+      copy:
+        src: './certificates/production/{{ item }}'
+        dest: '/etc/olcne/certificates/{{ item }}'
+        force: true
+      loop:
+        - ca.cert
+        - ca.key
+        - ca.srl
+
+    - name: br_netfilter Module [1/2]
+      shell: modprobe br_netfilter
+
+    - name: br_netfilter Module [2/2]
+      shell: sh -c 'echo "br_netfilter" > /etc/modules-load.d/br_netfilter.conf'
         
     - name: Configure the Platform Agent to use the certificates
       shell: |
@@ -316,11 +370,32 @@
         name: olcne-agent
         enabled: true
 
-    - name: Synchronize certificates folder to localhost certificates folder
-      synchronize:
-        mode: push
-        src: ./certificates/
-        dest: /etc/olcne/certificates
+    - name: Copy file with owner and permissions
+      copy:
+        src: './certificates/tmp-olcne/{{ ansible_host }}/{{ item }}'
+        dest: '/etc/olcne/certificates/{{ item }}'
+        force: true
+      loop:
+        - csr.info
+        - node.cert
+        - node.csr
+        - node.key
+
+    - name: Copy file with owner and permissions
+      copy:
+        src: './certificates/production/{{ item }}'
+        dest: '/etc/olcne/certificates/{{ item }}'
+        force: true
+      loop:
+        - ca.cert
+        - ca.key
+        - ca.srl
+
+    - name: br_netfilter Module [1/2]
+      shell: modprobe br_netfilter
+
+    - name: br_netfilter Module [2/2]
+      shell: sh -c 'echo "br_netfilter" > /etc/modules-load.d/br_netfilter.conf'
 
     - name: Configure the Platform Agent to use the certificates
       shell: |
@@ -335,22 +410,313 @@
   gather_facts: no
   become: true
   name: Creating the Cluster
+  vars_files:
+    - ../vars.yml
+  vars:
+    environment_name: production
+    kubernetes_module_name: olk8s
+    kubernetes_helm_module_name: olk8s-helm
+    kubernetes_istio_module_name: olk8s-istio
+    kubernetes_prometheus_module_name: olk8s-prometheus
+    load_balancer: 'admin.{{ domain }}'
+    load_balancer_port: 6443
   tasks:
-    - name: Creating an OLCNE environment
+    - block:
+        - name: Delete the environment if it already exists
+          shell: |
+            olcnectl --api-server 127.0.0.1:8091 environment delete \
+              --environment-name {{ environment_name }}
+          register: output
+      rescue:
+        - debug:
+            var: output
+      tags:
+        - k8s
+
+    - name: Create the 'production' environment
       shell: |
         olcnectl --api-server 127.0.0.1:8091 environment create \
-          --environment-name <environment_name> \
+          --environment-name {{ environment_name }} \
           --update-config \
           --secret-manager-type file \
-          --olcne-node-cert-path /etc/olcne/certificates/node.cert \
-          --olcne-ca-path /etc/olcne/certificates/ca.cert \
-          --olcne-node-key-path /etc/olcne/certificates/node.key
+          --olcne-ca-path /etc/olcne/production/ca.cert \
+          --olcne-node-cert-path /etc/olcne/tmp-olcne/{{ ansible_host }}/node.cert \
+          --olcne-node-key-path /etc/olcne/tmp-olcne/{{ ansible_host }}/node.key
+      register: output
+      tags:
+        - k8s
 
-    - name: Adding Kubernetes to an environment
+    - name: Save the output
+      copy:
+        dest: '../outputs/olcne_environment_create.yml'
+        content: '{{ output | to_nice_yaml }}'
+      become: false
+      delegate_to: localhost
+      tags:
+        - k8s
+      
+    - name: Create the Kubernetes module for the 'production' environment
       shell: |
-        olcnectl --api-server 127.0.0.1:8091 module create --environment-name <environment_name> \
-          --module kubernetes --name <cluster_name> \
+        olcnectl --api-server 127.0.0.1:8091 module create \
+          --environment-name {{ environment_name }} \
+          --module kubernetes --name {{ kubernetes_module_name }} \
           --container-registry container-registry.oracle.com/olcne \
-          --virtual-ip <virtual_ip> \
+          --load-balancer {{ load_balancer }}:{{ load_balancer_port }} \
           --master-nodes {{ groups["masters"] | join(":8090,") }}:8090 \
           --worker-nodes {{ groups["workers"] | join(":8090,") }}:8090
+      register: output
+      tags:
+        - k8s
+
+    - name: Save the output
+      copy:
+        dest: '../outputs/olcne_module_create.yml'
+        content: '{{ output | to_nice_yaml }}'
+      become: false
+      delegate_to: localhost
+      tags:
+        - k8s
+
+    - debug:
+        msg: 'The next task could take a while to complete. Please wait...'
+      tags: k8s
+      
+    - name: Create scripts to validate the creation of the Kubernetes module on the 'production' environment
+      shell: |
+        olcnectl --api-server 127.0.0.1:8091 module validate \
+          --environment-name {{ environment_name }} \
+          --name {{ kubernetes_module_name }} \
+          --generate-scripts
+      register: output
+      tags:
+        - k8s
+
+    - name: Save the output
+      copy:
+        dest: '../outputs/olcne_module_validate.yml'
+        content: '{{ output | to_nice_yaml }}'
+      become: false
+      delegate_to: localhost
+      tags:
+        - k8s
+    
+    - debug:
+        msg: 'The next task could take a while to complete. Please wait...'
+      tags:
+        - k8s
+
+    - name: Install the Kubernetes module to the 'production' environment
+      shell: |
+        olcnectl --api-server 127.0.0.1:8091 module install \
+          --environment-name {{ environment_name }} \
+          --name {{ kubernetes_module_name }}
+      register: output
+      tags:
+        - k8s
+
+    - name: Save the output
+      copy:
+        dest: '../outputs/olcne_module_install.yml'
+        content: '{{ output | to_nice_yaml }}'
+      become: false
+      delegate_to: localhost
+      tags:
+        - k8s
+
+    - name: Create the Kubernetes Helm module for the 'production' environment
+      shell: |
+        olcnectl --api-server 127.0.0.1:8091 module create \
+          --environment-name {{ environment_name }} \
+          --module helm --name {{ kubernetes_helm_module_name }} \
+          --helm-kubernetes-module {{ kubernetes_module_name }}
+      register: output
+      tags:
+        - helm
+
+    - name: Save the output
+      copy:
+        dest: '../outputs/olcne_helm_module_create.yml'
+        content: '{{ output | to_nice_yaml }}'
+      become: false
+      delegate_to: localhost
+      tags:
+        - helm
+
+    - name: Create scripts to validate the creation of the Helm module on the 'production' environment
+      shell: |
+        olcnectl --api-server 127.0.0.1:8091 module validate \
+          --environment-name {{ environment_name }} \
+          --name {{ kubernetes_helm_module_name }} \
+          --generate-scripts
+      register: output
+      tags:
+        - helm
+
+    - name: Save the output
+      copy:
+        dest: '../outputs/olcne_helm_module_validate.yml'
+        content: '{{ output | to_nice_yaml }}'
+      become: false
+      delegate_to: localhost
+      tags:
+        - helm
+
+    - debug:
+        msg: 'The next task could take a while to complete. Please wait...'
+      tags:
+        - helm
+
+    - name: Install the Kubernetes helm module to the 'production' environment
+      shell: |
+        olcnectl --api-server 127.0.0.1:8091 module install \
+          --environment-name {{ environment_name }} \
+          --name {{ kubernetes_helm_module_name }}
+      register: output
+      tags:
+        - helm
+
+    - name: Save the output
+      copy:
+        dest: '../outputs/olcne_helm_module_install.yml'
+        content: '{{ output | to_nice_yaml }}'
+      become: false
+      delegate_to: localhost
+      tags:
+        - helm
+
+    - name: Create the Kubernetes Istio module for the 'production' environment
+      shell: |
+        olcnectl --api-server 127.0.0.1:8091 module create \
+          --environment-name {{ environment_name }} \
+          --module istio --name {{ kubernetes_istio_module_name }} \
+          --istio-helm-module {{ kubernetes_helm_module_name }}
+      register: output
+      tags:
+        - istio
+
+    - name: Save the output
+      copy:
+        dest: '../outputs/olcne_istio_module_create.yml'
+        content: '{{ output | to_nice_yaml }}'
+      become: false
+      delegate_to: localhost
+      tags:
+        - istio
+
+    - name: Create scripts to validate the creation of the Istio module on the 'production' environment
+      shell: |
+        olcnectl --api-server 127.0.0.1:8091 module validate \
+          --environment-name {{ environment_name }} \
+          --name {{ kubernetes_istio_module_name }} \
+          --generate-scripts
+      register: output
+      tags:
+        - istio
+
+    - name: Save the output
+      copy:
+        dest: '../outputs/olcne_istio_module_validate.yml'
+        content: '{{ output | to_nice_yaml }}'
+      become: false
+      delegate_to: localhost
+      tags:
+        - istio
+
+    - debug:
+        msg: 'The next task could take a while to complete. Please wait...'
+      tags:
+        - istio
+
+    - name: Install the Kubernetes istio module to the 'production' environment
+      shell: |
+        olcnectl --api-server 127.0.0.1:8091 module install \
+          --environment-name {{ environment_name }} \
+          --name {{ kubernetes_istio_module_name }}
+      register: output
+      tags:
+        - istio
+
+    - name: Save the output
+      copy:
+        dest: '../outputs/olcne_istio_module_install.yml'
+        content: '{{ output | to_nice_yaml }}'
+      become: false
+      delegate_to: localhost
+      tags:
+        - istio
+
+    - name: Create the Kubernetes Prometheus module for the 'production' environment
+      shell: |
+        olcnectl --api-server 127.0.0.1:8091 module create \
+          --environment-name {{ environment_name }} \
+          --module prometheus --name {{ kubernetes_prometheus_module_name }} \
+          --prometheus-helm-module {{ kubernetes_helm_module_name }}
+      register: output
+      tags:
+        - prometheus
+
+    - name: Save the output
+      copy:
+        dest: '../outputs/olcne_prometheus_module_create.yml'
+        content: '{{ output | to_nice_yaml }}'
+      become: false
+      delegate_to: localhost
+      tags:
+        - prometheus
+
+    - name: Create scripts to validate the creation of the Prometheus module on the 'production' environment
+      shell: |
+        olcnectl --api-server 127.0.0.1:8091 module validate \
+          --environment-name {{ environment_name }} \
+          --name {{ kubernetes_prometheus_module_name }} \
+          --generate-scripts
+      register: output
+      tags:
+        - prometheus
+
+    - name: Save the output
+      copy:
+        dest: '../outputs/olcne_prometheus_module_validate.yml'
+        content: '{{ output | to_nice_yaml }}'
+      become: false
+      delegate_to: localhost
+      tags:
+        - prometheus
+
+    - debug:
+        msg: 'The next task could take a while to complete. Please wait...'
+      tags:
+        - prometheus
+
+    - name: Install the Kubernetes prometheus module to the 'production' environment
+      shell: |
+        olcnectl --api-server 127.0.0.1:8091 module install \
+          --environment-name {{ environment_name }} \
+          --name {{ kubernetes_prometheus_module_name }}
+      register: output
+      tags:
+        - prometheus
+
+    - name: Save the output
+      copy:
+        dest: '../outputs/olcne_prometheus_module_install.yml'
+        content: '{{ output | to_nice_yaml }}'
+      become: false
+      delegate_to: localhost
+      tags:
+        - prometheus
+
+- hosts: masters
+  gather_facts: no
+  become: true
+  name: Download cluster access configs
+  vars_files:
+    - ../vars.yml
+  tags:
+    - kubectl
+  tasks:
+    - name: Copy cluster connection configuration
+      fetch:
+        src: /etc/kubernetes/admin.conf
+        dest: '../outputs/{{ ansible_host }}.config'
+        flat: yes
