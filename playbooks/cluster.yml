@@ -420,6 +420,9 @@
     kubernetes_prometheus_module_name: olk8s-prometheus
     load_balancer: 'admin.{{ domain }}'
     load_balancer_port: 6443
+    create_istio_module: true
+    create_helm_module: true
+    create_prometheus_module: false
   tasks:
     - block:
         - name: Delete the environment if it already exists
@@ -505,7 +508,7 @@
       tags:
         - k8s
 
-    - name: Install the Kubernetes module to the 'production' environment
+    - name: Install the Kubernetes module on the 'production' environment
       shell: |
         olcnectl --api-server 127.0.0.1:8091 module install \
           --environment-name {{ environment_name }} \
@@ -532,6 +535,7 @@
       register: output
       tags:
         - helm
+      when: create_helm_module == True
 
     - name: Save the output
       copy:
@@ -541,6 +545,7 @@
       delegate_to: localhost
       tags:
         - helm
+      when: create_helm_module == True
 
     - name: Create scripts to validate the creation of the Helm module on the 'production' environment
       shell: |
@@ -551,6 +556,7 @@
       register: output
       tags:
         - helm
+      when: create_helm_module == True
 
     - name: Save the output
       copy:
@@ -560,11 +566,13 @@
       delegate_to: localhost
       tags:
         - helm
+      when: create_helm_module == True
 
     - debug:
         msg: 'The next task could take a while to complete. Please wait...'
       tags:
         - helm
+      when: create_helm_module == True
 
     - name: Install the Kubernetes helm module to the 'production' environment
       shell: |
@@ -574,6 +582,7 @@
       register: output
       tags:
         - helm
+      when: create_helm_module == True
 
     - name: Save the output
       copy:
@@ -583,6 +592,7 @@
       delegate_to: localhost
       tags:
         - helm
+      when: create_helm_module == True
 
     - name: Create the Kubernetes Istio module for the 'production' environment
       shell: |
@@ -593,6 +603,7 @@
       register: output
       tags:
         - istio
+      when: create_istio_module == True
 
     - name: Save the output
       copy:
@@ -602,6 +613,7 @@
       delegate_to: localhost
       tags:
         - istio
+      when: create_istio_module == True
 
     - name: Create scripts to validate the creation of the Istio module on the 'production' environment
       shell: |
@@ -612,6 +624,7 @@
       register: output
       tags:
         - istio
+      when: create_istio_module == True
 
     - name: Save the output
       copy:
@@ -621,11 +634,13 @@
       delegate_to: localhost
       tags:
         - istio
+      when: create_istio_module == True
 
     - debug:
         msg: 'The next task could take a while to complete. Please wait...'
       tags:
         - istio
+      when: create_istio_module == True
 
     - name: Install the Kubernetes istio module to the 'production' environment
       shell: |
@@ -635,6 +650,7 @@
       register: output
       tags:
         - istio
+      when: create_istio_module == True
 
     - name: Save the output
       copy:
@@ -644,6 +660,7 @@
       delegate_to: localhost
       tags:
         - istio
+      when: create_istio_module == True
 
     - name: Create the Kubernetes Prometheus module for the 'production' environment
       shell: |
@@ -654,6 +671,7 @@
       register: output
       tags:
         - prometheus
+      when: create_prometheus_module == True
 
     - name: Save the output
       copy:
@@ -663,6 +681,7 @@
       delegate_to: localhost
       tags:
         - prometheus
+      when: create_prometheus_module == True
 
     - name: Create scripts to validate the creation of the Prometheus module on the 'production' environment
       shell: |
@@ -673,6 +692,7 @@
       register: output
       tags:
         - prometheus
+      when: create_prometheus_module == True
 
     - name: Save the output
       copy:
@@ -682,11 +702,13 @@
       delegate_to: localhost
       tags:
         - prometheus
+      when: create_prometheus_module == True
 
     - debug:
         msg: 'The next task could take a while to complete. Please wait...'
       tags:
         - prometheus
+      when: create_prometheus_module == True
 
     - name: Install the Kubernetes prometheus module to the 'production' environment
       shell: |
@@ -696,6 +718,7 @@
       register: output
       tags:
         - prometheus
+      when: create_prometheus_module == True
 
     - name: Save the output
       copy:
@@ -705,6 +728,7 @@
       delegate_to: localhost
       tags:
         - prometheus
+      when: create_prometheus_module == True
 
 - hosts: masters
   gather_facts: no
