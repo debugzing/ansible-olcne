@@ -1,6 +1,6 @@
-# Spot Kubernetes Cluster on AWS
+# setting up Kubernetes Cluster on AWS (Based on Guzzomane's scipts)
 
-Set of Ansible Playbooks that allow the creation of a Kubernetes cluster on AWS, managed by [Spot] (https://console.spotinst.com/) Using [Oracle Linux Cloud Native Environment] (https://docs.oracle. com / en / operating-systems / olcne /).
+Set of Ansible Playbooks that allow the creation of a Kubernetes cluster on AWS, Using [Oracle Linux Cloud Native Environment] (https://docs.oracle. com / en / operating-systems / olcne /).
 
 ## Environment Variables
 
