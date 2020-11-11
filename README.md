@@ -1,4 +1,4 @@
-# setting up Kubernetes Cluster on AWS (Based on Guzzomane's scipts)
+# setting up Kubernetes Cluster on AWS (Based on Guzzmone's scipts)
 
 Set of Ansible Playbooks that allow the creation of a Kubernetes cluster on AWS, Using [Oracle Linux Cloud Native Environment] (https://docs.oracle. com / en / operating-systems / olcne /).
 
